@@ -2,10 +2,11 @@ import scrapy
 from instrument.items import NewProductItem
 
 xpath_selectors = {
+    # 基本信息部分
     'bi_brand': '//div[@class="yqyx-TRANS-product-intro-info-desc flex flex-w"]//label[contains(text(), "品牌")]/following-sibling::p/text()',
-    '': '',
-    '': '',
-    '': '',
+    'bi_origin_category': '//em[contains(text(), "产地类别")]/following-sibling::i/text()',
+    'bi_origin': '//div[@class="yqyx-TRANS-product-intro-info-desc flex flex-w"]//label[contains(text(), "产地")]/following-sibling::p/text()',
+    'bi_manufacturer_type': '',
     '': '',
     '': '',
     '': '',
@@ -79,7 +80,10 @@ class ChromatographSpider(scrapy.Spider):
         item = response.meta['item']
         # 品牌
         item['bi_brand'] = response.xpath(xpath_selectors['bi_brand']).extract_first() if response.xpath(xpath_selectors['bi_brand']).extract_first() else None
-        #
-
-
-
+        # 应用领域：后续另外爬取数据进行关联处理
+        # 产地类别
+        item['bi_origin_category'] = response.xpath(xpath_selectors['bi_brand']).extract_first() if response.xpath(xpath_selectors['bi_brand']).extract_first() else None
+        # 产地
+        item['bi_origin'] = response.xpath(xpath_selectors['bi_origin']).extract_first() if response.xpath(xpath_selectors['bi_origin']).extract_first() else None
+        # 厂商性质
+        item['bi_manufacturer_type'] = response.xpath(xpath_selectors['bi_manufacturer_type']).extract_first() if response.xpath(xpath_selectors['bi_manufacturer_type']).extract_first() else None
