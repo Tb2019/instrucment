@@ -1,0 +1,9 @@
+相关资料pdf下载：
+获取下载地址：
+    接口：https://www.instrument.com.cn/netshow/combo/paper/getAttachmentUrl
+    请求方法：post
+    请求体body：paperId={url地址最后的数字}&pType=1&device=PC
+    携带cookie
+
+
+应用领域另行爬取关联
