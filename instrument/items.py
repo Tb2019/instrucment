@@ -29,7 +29,7 @@ class NewProductItem(scrapy.Item):
     bi_business_license_status = scrapy.Field()  # 基本信息-营业执照审核状态
     bi_rating = scrapy.Field()  # 基本信息-评分
     bi_reference_price = scrapy.Field()  # 基本信息-参考报价
-    bi_sample = scrapy.Field()  # 基本信息-样本
+    bi_sample_src = scrapy.Field()  # 基本信息-样本链接
     core_parameters = scrapy.Field()  # 核心参数
     product_description = scrapy.Field()  # 产品介绍
     rs_image = scrapy.Field()  # 相关方案-图片

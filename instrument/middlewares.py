@@ -3,10 +3,10 @@
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 import asyncio
+import scrapy
 from twisted.internet import defer
 from twisted.internet.threads import deferToThread
 from scrapy import signals
-import aiohttp
 import requests
 from scrapy.http import HtmlResponse
 from fake_useragent import UserAgent
@@ -134,6 +134,10 @@ class request_middleware:
             response = self.session.get(request.url, headers={'User-Agent': UserAgent().random})
             # 创建 Scrapy 的 HtmlResponse 对象
             # todo：如果请求失败，重新生成请求
+            if 'seccaptcha.haplat.net/css/captcha.css' in response.text:
+                print("重试")
+                request_retry = request.replace(dont_filter=True)
+                return request_retry
             return HtmlResponse(url=request.url, body=response.content, encoding='utf-8', request=request)
 
         # 返回一个Deferred对象，异步执行 send_request

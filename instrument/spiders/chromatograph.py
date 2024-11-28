@@ -1,24 +1,40 @@
 import scrapy
 from instrument.items import NewProductItem
 
-xpath_selectors = {
-    # 基本信息部分
+xpath_selectors_single_info = {
+    ## 基本信息部分
+    # 品牌
     'bi_brand': '//div[@class="yqyx-TRANS-product-intro-info-desc flex flex-w"]//label[contains(text(), "品牌")]/following-sibling::p/text()',
+    # todo: 应用领域：后续另外爬取数据进行关联处理
+    # 产地类别
     'bi_origin_category': '//em[contains(text(), "产地类别")]/following-sibling::i/text()',
+    # 产地
     'bi_origin': '//div[@class="yqyx-TRANS-product-intro-info-desc flex flex-w"]//label[contains(text(), "产地")]/following-sibling::p/text()',
-    'bi_manufacturer_type': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
-    '': '',
+    # 厂商性质
+    'bi_manufacturer_type': '//ul[@class="yqyx-TRANS-product-intro-info-company-card-desc flex a-c"]/li[last()]/text()',
+    # 仪器名称
+    'bi_instrument_name': '//div[@class="yqyx-TRANS-product-intro-info-title"]/h1/a/text()',
+    # 型号
+    'bi_model_number': '//div[@class="yqyx-TRANS-product-intro-info-desc flex flex-w"]//label[contains(text(), "型号")]/following-sibling::p/text()',
+    # 厂商名称
+    'bi_manufacturer_name': '//div[@class="yqyx-TRANS-product-intro-info-company-card-title flex a-c"]/a/text()',
+    # 厂商LOGO
+    'bi_manufacturer_logo': '//div[@class="yqyx-TRANS-product-intro-info-company-card flex a-c"]//div[@class="img-box"]//img/@src',
+    # 营业执照审核状态
+    'bi_business_license_status': '//span[@class="yqyx-TRANS-product-intro-info-company-card-title-tag flex a-c"]/text()',
+    # 评分
+    'bi_rating': '//span[@class="yqyx-TRANS-product-intro-info-desc-item-top-rate-number"]/text()',
+    # 参考报价
+    'bi_reference_price': '//span[@class="yqyx-TRANS-product-intro-info-desc-item-top-amt-yuan"]/text()',
+    # 样本链接
+    'bi_sample_src': '//div[@class="yqyx-TRANS-product-intro-info-desc flex flex-w"]//label[contains(text(), "样本")]/following-sibling::a/@href',
 }
+
+xpath_selectors_multi_info = {
+    # 仪器图片
+    'bi_instrument_image': '//div[@class="swiper-container"]//div[contains(@class, "swiper-slide")]//img/@src'
+}
+
 
 class ChromatographSpider(scrapy.Spider):
     name = "chromatograph"
@@ -78,12 +94,10 @@ class ChromatographSpider(scrapy.Spider):
         :return:
         '''
         item = response.meta['item']
-        # 品牌
-        item['bi_brand'] = response.xpath(xpath_selectors['bi_brand']).extract_first() if response.xpath(xpath_selectors['bi_brand']).extract_first() else None
-        # 应用领域：后续另外爬取数据进行关联处理
-        # 产地类别
-        item['bi_origin_category'] = response.xpath(xpath_selectors['bi_brand']).extract_first() if response.xpath(xpath_selectors['bi_brand']).extract_first() else None
-        # 产地
-        item['bi_origin'] = response.xpath(xpath_selectors['bi_origin']).extract_first() if response.xpath(xpath_selectors['bi_origin']).extract_first() else None
-        # 厂商性质
-        item['bi_manufacturer_type'] = response.xpath(xpath_selectors['bi_manufacturer_type']).extract_first() if response.xpath(xpath_selectors['bi_manufacturer_type']).extract_first() else None
+        # 填充单一信息
+        for key, xpath in xpath_selectors_single_info.items():
+            item[key] = response.xpath(xpath).extract_first() if response.xpath(xpath).extract_first() else None
+        # 填充多信息字段
+        for key, xpath in xpath_selectors_multi_info.items():
+            item[key] = response.xpath(xpath).extract() if response.xpath(xpath).extract() else None
+        print(item)
