@@ -1,3 +1,5 @@
+import json
+
 import scrapy
 from instrument.items import NewProductItem
 
@@ -34,6 +36,16 @@ xpath_selectors_multi_info = {
     # 仪器图片
     'bi_instrument_image': '//div[@class="swiper-container"]//div[contains(@class, "swiper-slide")]//img/@src'
 }
+
+# 核心参数
+core_parameters_xpath = '//div[@class="yqyx-TRANS-product-intro-parameters-core flex flex-w"]/p'
+# 产品介绍
+product_description_xpath = '//div[@class="yqyx-TRANS-product-intro-details-introduction-text"]'
+# 售后服务
+after_sale_xpath = '//div[@id="yqyx-TRANS-commitment"]/div[2]/p'
+
+# 相关方案
+relevant_solutions_xpath = '//div[@id="yqyx-TRANS-relatedplans"]'
 
 
 class ChromatographSpider(scrapy.Spider):
@@ -100,4 +112,50 @@ class ChromatographSpider(scrapy.Spider):
         # 填充多信息字段
         for key, xpath in xpath_selectors_multi_info.items():
             item[key] = response.xpath(xpath).extract() if response.xpath(xpath).extract() else None
-        print(item)
+        # 核心参数信息提取
+        ps = response.xpath(core_parameters_xpath)
+        if ps:
+            item['core_parameters'] = {}
+            for p in ps:
+                parameters_name = p.xpath('./em/text()').extract_first().replace('：', '').strip()
+                parameters_value = p.xpath('./i/text()').extract_first().strip()
+                item['core_parameters'][parameters_name] = parameters_value
+        else:
+            item['core_parameters'] = None
+        # 产品介绍
+        item['product_description'] = response.xpath(product_description_xpath).get()
+        # 售后服务
+        ps = response.xpath(after_sale_xpath)
+        if ps:
+            item['after_sale_service'] = {}
+            for p in ps:
+                ass_name = p.xpath('./span[1]/text()').extract_first()
+                ass_value = p.xpath('./span[2]/text()').extract_first()
+                item['after_sale_service'][ass_name] = ass_value
+        else:
+            item['after_sale_service'] = None
+
+        # 包含子页面部分
+        sub_links_num = None  # todo: 计算总的子页面链接数，方便决定什么时候返回item。但是评论里存在翻页，需要考虑这样是否可行
+        finish_link_count = 0
+        # 相关方案
+        info = response.xpath(relevant_solutions_xpath)
+        if info:
+            item['relevant_solutions'] = {}
+            id_category_dict = {}
+
+            # 获取id-类别对
+            category_infos = info.xpath('./div/div/a')
+            for category_info in category_infos:
+                category_id = category_info.xpath('./@data-name').extract_first()
+                category_value = category_info.xpath('./text()').extract_first()
+                id_category_dict[category_id] = category_value
+
+            uls = info.xpath('./ul')
+            for ul in uls:
+                id_ = ul.xpath('./@id').extract_first()
+                # 获得id对应的类别
+                category = id_category_dict[id_]
+
+        else:
+            item['relevant_solutions'] = None
