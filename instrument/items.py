@@ -34,15 +34,9 @@ class NewProductItem(scrapy.Item):
     product_description = scrapy.Field()  # 产品介绍
     after_sale_service = scrapy.Field()  # 售后服务相关
     relevant_solutions = scrapy.Field()  # 相关方案
-    ra_title = scrapy.Field()  # 相关文章-标题
-    ra_release_date = scrapy.Field()  # 相关文章-发布时间
-    ra_article_details = scrapy.Field()  # 相关文章-文章详情
-    ue_user_avatar = scrapy.Field()  # 用户评价-用户头像
-    ue_username = scrapy.Field()  # 用户评价-用户名
-    ue_product_quality_rating = scrapy.Field()  # 用户评价-产品质量评分
-    ue_after_sales_service_rating = scrapy.Field()  # 用户评价-售后服务评分
-    ue_usability_rating = scrapy.Field()  # 用户评价-易用性评分
-    ue_cost_performance_rating = scrapy.Field()  # 用户评价-性价比评分
-    ue_comment_text = scrapy.Field()  # 用户评价-评论文字
-    ue_comment_images = scrapy.Field()  # 用户评价-评论图片
-    ue_publish_time = scrapy.Field()  # 用户评价-发布时间
+    relevant_article = scrapy.Field()   # 相关文章
+    user_evaluation = scrapy.Field()  # 用户评价
+
+    sub_links_num = scrapy.Field()
+    finish_link_count = scrapy.Field()
+    user_evaluation_finished = scrapy.Field()

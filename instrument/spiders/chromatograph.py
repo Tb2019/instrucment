@@ -46,6 +46,20 @@ after_sale_xpath = '//div[@id="yqyx-TRANS-commitment"]/div[2]/p'
 
 # 相关方案
 relevant_solutions_xpath = '//div[@id="yqyx-TRANS-relatedplans"]'
+relevant_solutions_num_xpath = '//div[@id="yqyx-TRANS-relatedplans"]/ul/li'  # 计数
+
+sample_detection_xpath = '//div[@class="s-c-top-item fl mb20"]/span[contains(text(), "检测样品")]/following-sibling::span/text()'  # 详情页内容
+detection_item_xpath = '//div[@class="s-c-top-item fl mb20"]/span[contains(text(), "检测项目")]/following-sibling::span/text()'  # 详情页内容
+vendor_logo_xpath = '//a[@class="inlineBlock s-v-left va"]/img/@src'
+vendor_name_xpath = '//p[@class="tit omit inlineBlock"]/text()'
+solution_detail_xpath = '//div[@class="s-detail-content positionR"]'
+
+# 相关文章
+relevant_article_xpath = '//ul[@id="yqyx-TRANS-introAbout3"]'
+relevant_article_num_xpath = '//ul[@id="yqyx-TRANS-introAbout3"]/li'  # 计数
+
+# 用户评价链接
+user_evaluation_link_xpath = '//div[@class="yqyx-TRANS-product-intro-usercomments-footer"]/a/@href'
 
 
 class ChromatographSpider(scrapy.Spider):
@@ -136,10 +150,22 @@ class ChromatographSpider(scrapy.Spider):
             item['after_sale_service'] = None
 
         # 包含子页面部分
-        sub_links_num = None  # todo: 计算总的子页面链接数，方便决定什么时候返回item。但是评论里存在翻页，需要考虑这样是否可行
+        sub_links_num = 0  # todo: 计算总的子页面链接数，方便决定什么时候返回item。但是评论里存在翻页，需要考虑这样是否可行
         finish_link_count = 0
+
+        # 相关方案链接数
+        sub_links_num += len(response.xpath(relevant_solutions_num_xpath))
+        # 相关资料链接数
+        sub_links_num += len(response.xpath())
+        # 用户评论是否爬取完毕标志
+        user_evaluation_finished = False
+
+        item['sub_links_num'] = sub_links_num
+        item['finish_link_count'] = finish_link_count
+        item['user_evaluation_finished'] = user_evaluation_finished
+
         # 相关方案
-        info = response.xpath(relevant_solutions_xpath)
+        info = response.xpath(relevant_solutions_xpath).extract_first()
         if info:
             item['relevant_solutions'] = {}
             id_category_dict = {}
@@ -150,12 +176,100 @@ class ChromatographSpider(scrapy.Spider):
                 category_id = category_info.xpath('./@data-name').extract_first()
                 category_value = category_info.xpath('./text()').extract_first()
                 id_category_dict[category_id] = category_value
+                # 将类比信息填充至item
+                item['relevant_solutions'][category_value] = []
 
             uls = info.xpath('./ul')
             for ul in uls:
                 id_ = ul.xpath('./@id').extract_first()
                 # 获得id对应的类别
                 category = id_category_dict[id_]
-
+                lis = ul.xpath('./li')
+                for li in lis:
+                    solution_href = li.xpath('./a/@href').extract_first()
+                    solution_img = li.xpath('./a/img/href').extract_first()
+                    solution_title = li.xpath('./div/').extract_first()
+                    solution_intro = li.xpath('./div/span/text()').extract_first()
+                    solution_tag = li.xpath('./div/p/em/text()').extract_first()
+                    solution_time = li.xpath('./div/p/i/text()').extract_first()
+                    yield scrapy.Request(url=solution_href,
+                                         callback=self.parse_relevant_solutions,
+                                         meta={'item': item,
+                                               'solution_img': solution_img,
+                                               'solution_title': solution_title,
+                                               'solution_intro': solution_intro,
+                                               'solution_tag': solution_tag,
+                                               'solution_time': solution_time,
+                                               'category': category})
         else:
             item['relevant_solutions'] = None
+
+        # 相关文章
+        article = response.xpath(relevant_article_xpath).extract_first()
+        if article:
+            item['relevant_article'] = {}
+            lis = article.xpath('./li')
+            for li in lis:
+                article_href = li.xpath('./div[1]/a/@href').extract_first()
+                article_title = li.xpath('./div[1]/a/text()').extract_first()
+                article_time = li.xpath('./div[2]/span[2]/text()').extract_first()
+                yield scrapy.Request(url=article_href,
+                                     callback=self.parse_relevant_article,
+                                     meta={'item': item,
+                                           'article_title': article_title,
+                                           'article_time': article_time})
+        else:
+            item['relevant_article'] = None
+
+        # 用户评论
+        user_evaluation = response.xpath(user_evaluation_link_xpath).extract_first()
+        if user_evaluation:
+            evaluation_link = response.urljoin(user_evaluation.xpath('./a/@href').extract_first())
+            yield scrapy.Request(url=evaluation_link,
+                                 callback=self.parse_user_evaluation,
+                                 meta={'item': item})
+        else:
+            item['user_evaluation'] = None
+
+    def parse_relevant_solutions(self, response):
+        '''
+        解析相关方案详情页
+        :param response:
+        :return:
+        '''
+        item = response.meta['item']
+        category = item['category']  # 方案大类
+        sample_detection = response.xpath(sample_detection_xpath).extract_first() if response.xpath(sample_detection_xpath).extract_first() else None  # 样本检测
+        detection_item = response.xpath(detection_item_xpath).extract_first() if response.xpath(detection_item_xpath).extract_first() else None # 检测项目
+        vendor_logo = response.xpath(vendor_logo_xpath).extract_first() if response.xpath(vendor_logo_xpath).extract_first() else None  # 厂商logo
+        vendor_name = response.xpath(vendor_name_xpath).extract_first() if response.xpath(vendor_name_xpath).extract_first() else None  # 厂商名称
+        solution_detail = response.xpath(solution_detail_xpath).get()
+
+        item['relevant_solutions'][category].append({
+            'solution_img': response.meta['solution_img'],
+            'solution_title': response.meta['solution_title'],
+            'solution_intro': response.meta['solution_intro'],
+            'solution_tag': response.meta['solution_tag'],
+            'publication_time': response.meta['solution_time'],
+            'sample_detection': sample_detection,
+            'detection_item': detection_item,
+            'vendor_logo': vendor_logo,
+            'vendor_name': vendor_name,
+            'solution_detail': solution_detail
+        })
+
+        item['finish_link_count'] += 1
+        if (item['finish_link_count'] == item['total_link_count']) and (item['user_evaluation_finished'] is True):
+            yield item
+
+    def parse_relevant_article(self, response):
+        item = response.meta['item']
+
+
+    def parse_user_evaluation(self, response):
+        '''
+        重新考虑判断评论抓取完毕的逻辑，因为最后一个请求yield完成之后，就会执行修改逻辑，即使最后一个请求的爬取并未完成
+        :param response:
+        :return:
+        '''
+        pass
