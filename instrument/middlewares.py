@@ -10,6 +10,7 @@ from scrapy import signals
 import requests
 from scrapy.http import HtmlResponse
 from fake_useragent import UserAgent
+from instrument.Pdf_url_request import PdfUrlRequest
 
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
@@ -115,6 +116,19 @@ class request_middleware:
     # passed objects.
     def __init__(self):
         self.session = requests.Session()  # 创建一个请求会话
+        # 获取pdf链接用到以下配置
+        self.url = "https://www.instrument.com.cn/netshow/combo/paper/getAttachmentUrl"
+        self.headers = {
+                    'Accept': 'application/json, text/javascript, */*; q=0.01',
+                    'Accept-Language': 'zh-CN,zh;q=0.9',
+                    'Connection': 'keep-alive',
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                    'Cookie': 'mobileValid=85de113a163b97513476bd80075ed6e2; imtoken=07b7c6774861c7907d078cef54eeb88c; CheckValid=25277ff477881fe3d333edfb77b70dbb; imstep=1733191848; passwordValid=b7be5bfb0e9daf2c24663eddcdd96b59; useid=6825953; mobile=b47ebe9bea209181829fecc5b23a29ff; nickname=Ins%255f98d68598; username_guestbook=6825953; userType=0; privacyVersion=62; username=Ins_98d68598; ; HMF_CI=cc1a1861b124063fca0360db7e848979eaea11c11c84c575f36e003b25acad310a800fe79db6c55ffcc7a734f262fe4aa8c8e1957d4ebaa31acb6fd9a4270f04dc',
+                    'DNT': '1',
+                    'Origin': 'https://www.instrument.com.cn',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0',
+                    'X-Requested-With': 'XMLHttpRequest'
+                    }
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -130,8 +144,12 @@ class request_middleware:
 
         # 使用 requests 会话发送请求
         def send_request():
-            # 发送同步请求
-            response = self.session.get(request.url, headers={'User-Agent': UserAgent().random})
+            if isinstance(request, PdfUrlRequest):
+                payload = 'paperId={}&pType=1&device=PC'.format(request.meta['pdf_serial'])
+                response = requests.request("POST", self.url, headers=self.headers, data=payload)
+            else:
+                # 发送同步请求
+                response = self.session.get(request.url, headers={'User-Agent': UserAgent().random})
             # 创建 Scrapy 的 HtmlResponse 对象
             # todo：如果请求失败，重新生成请求
             if 'seccaptcha.haplat.net/css/captcha.css' in response.text:
