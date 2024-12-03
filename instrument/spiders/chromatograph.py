@@ -231,10 +231,10 @@ class ChromatographSpider(scrapy.Spider):
             item['relevant_article'] = None
 
         # 用户评论
-        user_evaluation = response.xpath(user_evaluation_link_xpath)
+        user_evaluation = response.xpath(user_evaluation_link_xpath).extract_first()
         if user_evaluation:
             item['user_evaluation'] = []
-            evaluation_link = response.urljoin(user_evaluation.xpath('./a/@href').extract_first())
+            evaluation_link = response.urljoin(user_evaluation)
             yield scrapy.Request(url=evaluation_link,
                                  dont_filter=True,
                                  callback=self.parse_user_evaluation,
@@ -296,11 +296,11 @@ class ChromatographSpider(scrapy.Spider):
 
 
     def parse_user_evaluation(self, response):
-        '''
-        重新考虑判断评论抓取完毕的逻辑，因为最后一个请求yield完成之后，就会执行修改逻辑，即使最后一个请求的爬取并未完成
-        :param response:
-        :return:
-        '''
+        # '''
+        # 重新考虑判断评论抓取完毕的逻辑，因为最后一个请求yield完成之后，就会执行修改逻辑，即使最后一个请求的爬取并未完成
+        # :param response:
+        # :return:
+        # '''
         item = response.meta['item']
         evaluation_divs = response.xpath(user_evaluation_xpath)
         for evaluation_div in evaluation_divs:
@@ -326,7 +326,9 @@ class ChromatographSpider(scrapy.Spider):
             yield item
 
         for page in range(2, pages+1):
-            yield PdfUrlRequest(url=response.url + '&page=' + str(page),
-                                callback=self.parse_user_evaluation,
-                                meta={'item': item,
-                                      'page': page})
+            if not item['user_evaluation_finished']:
+                yield scrapy.Request(url=response.url.split('?')[0] + '?page=' + str(page),
+                                     callback=self.parse_user_evaluation,
+                                     meta={'item': item,
+                                           'page': page})
+# todo:这里的逻辑会导致重复生成一个item， 直接将标志设置为True则没有bug
