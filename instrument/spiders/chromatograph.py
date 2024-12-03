@@ -1,6 +1,7 @@
 import json
-
+import re
 import scrapy
+from instrument.Pdf_url_request import PdfUrlRequest
 from instrument.items import NewProductItem
 
 xpath_selectors_single_info = {
@@ -46,20 +47,22 @@ after_sale_xpath = '//div[@id="yqyx-TRANS-commitment"]/div[2]/p'
 
 # 相关方案
 relevant_solutions_xpath = '//div[@id="yqyx-TRANS-relatedplans"]'
-relevant_solutions_num_xpath = '//div[@id="yqyx-TRANS-relatedplans"]/ul/li'  # 计数
+relevant_solutions_num_xpath = '//div[@id="yqyx-TRANS-relatedplans"]/ul/li/a/@href'  # 计数
 
 sample_detection_xpath = '//div[@class="s-c-top-item fl mb20"]/span[contains(text(), "检测样品")]/following-sibling::span/text()'  # 详情页内容
 detection_item_xpath = '//div[@class="s-c-top-item fl mb20"]/span[contains(text(), "检测项目")]/following-sibling::span/text()'  # 详情页内容
-vendor_logo_xpath = '//a[@class="inlineBlock s-v-left va"]/img/@src'
+vendor_logo_xpath = '//div[@class="inlineBlock s-v-left va"]/a/img/@src'
 vendor_name_xpath = '//p[@class="tit omit inlineBlock"]/text()'
 solution_detail_xpath = '//div[@class="s-detail-content positionR"]'
 
-# 相关文章
+# 相关资料
 relevant_article_xpath = '//ul[@id="yqyx-TRANS-introAbout3"]'
-relevant_article_num_xpath = '//ul[@id="yqyx-TRANS-introAbout3"]/li'  # 计数
+relevant_article_num_xpath = '//ul[@id="yqyx-TRANS-introAbout3"]/li/div[1]/a/@href'  # 计数
 
 # 用户评价链接
 user_evaluation_link_xpath = '//div[@class="yqyx-TRANS-product-intro-usercomments-footer"]/a/@href'
+user_evaluation_xpath = '//div[@class="yqyx-TRANS-product-intro-usercomments-list"]/div'
+user_evaluation_num_xpath = '//div[@class="pc-paging flex a-c j-c bgf"]/span/text()'
 
 
 class ChromatographSpider(scrapy.Spider):
@@ -98,6 +101,7 @@ class ChromatographSpider(scrapy.Spider):
             href = response.urljoin(info.xpath('//div[@class="flex a-c"]/a/@href').extract_first())
             # print(href)
             item_ = response.meta['item'].copy()  # 深拷贝。否则传递的是引用，会导致后续的item被修改，值是相同的
+            item_['instru_link'] = href
             yield scrapy.Request(url=href, callback=self.parse_detail, meta={'item': item_})
             break
 
@@ -154,9 +158,9 @@ class ChromatographSpider(scrapy.Spider):
         finish_link_count = 0
 
         # 相关方案链接数
-        sub_links_num += len(response.xpath(relevant_solutions_num_xpath))
+        sub_links_num += len(response.xpath(relevant_solutions_num_xpath).extract())
         # 相关资料链接数
-        sub_links_num += len(response.xpath())
+        sub_links_num += len(response.xpath(relevant_article_num_xpath).extract())
         # 用户评论是否爬取完毕标志
         user_evaluation_finished = False
 
@@ -165,7 +169,7 @@ class ChromatographSpider(scrapy.Spider):
         item['user_evaluation_finished'] = user_evaluation_finished
 
         # 相关方案
-        info = response.xpath(relevant_solutions_xpath).extract_first()
+        info = response.xpath(relevant_solutions_xpath)
         if info:
             item['relevant_solutions'] = {}
             id_category_dict = {}
@@ -187,13 +191,14 @@ class ChromatographSpider(scrapy.Spider):
                 lis = ul.xpath('./li')
                 for li in lis:
                     solution_href = li.xpath('./a/@href').extract_first()
-                    solution_img = li.xpath('./a/img/href').extract_first()
-                    solution_title = li.xpath('./div/').extract_first()
+                    solution_img = li.xpath('./a/img/@src').extract_first()
+                    solution_title = li.xpath('./div/div/a/text()').extract_first()
                     solution_intro = li.xpath('./div/span/text()').extract_first()
                     solution_tag = li.xpath('./div/p/em/text()').extract_first()
                     solution_time = li.xpath('./div/p/i/text()').extract_first()
                     yield scrapy.Request(url=solution_href,
                                          callback=self.parse_relevant_solutions,
+                                         dont_filter=True,
                                          meta={'item': item,
                                                'solution_img': solution_img,
                                                'solution_title': solution_title,
@@ -205,29 +210,36 @@ class ChromatographSpider(scrapy.Spider):
             item['relevant_solutions'] = None
 
         # 相关文章
-        article = response.xpath(relevant_article_xpath).extract_first()
+        article = response.xpath(relevant_article_xpath)
         if article:
-            item['relevant_article'] = {}
+            item['relevant_article'] = []
             lis = article.xpath('./li')
             for li in lis:
                 article_href = li.xpath('./div[1]/a/@href').extract_first()
+                pdf_serial = re.search(r'down_(\d+)\.htm', article_href.split('/')[-1], re.S).group(1)
                 article_title = li.xpath('./div[1]/a/text()').extract_first()
                 article_time = li.xpath('./div[2]/span[2]/text()').extract_first()
-                yield scrapy.Request(url=article_href,
-                                     callback=self.parse_relevant_article,
-                                     meta={'item': item,
-                                           'article_title': article_title,
-                                           'article_time': article_time})
+                article_intro = li.xpath('./p/text()').extract_first()
+                yield PdfUrlRequest(url=article_href,
+                                    callback=self.parse_relevant_article,
+                                    meta={'item': item,
+                                          'article_title': article_title,
+                                          'article_time': article_time,
+                                          'article_intro': article_intro,
+                                          'pdf_serial': pdf_serial})
         else:
             item['relevant_article'] = None
 
         # 用户评论
-        user_evaluation = response.xpath(user_evaluation_link_xpath).extract_first()
+        user_evaluation = response.xpath(user_evaluation_link_xpath)
         if user_evaluation:
+            item['user_evaluation'] = []
             evaluation_link = response.urljoin(user_evaluation.xpath('./a/@href').extract_first())
             yield scrapy.Request(url=evaluation_link,
+                                 dont_filter=True,
                                  callback=self.parse_user_evaluation,
-                                 meta={'item': item})
+                                 meta={'item': item,
+                                       'page': 1})
         else:
             item['user_evaluation'] = None
 
@@ -238,7 +250,7 @@ class ChromatographSpider(scrapy.Spider):
         :return:
         '''
         item = response.meta['item']
-        category = item['category']  # 方案大类
+        category = response.meta['category']  # 方案大类
         sample_detection = response.xpath(sample_detection_xpath).extract_first() if response.xpath(sample_detection_xpath).extract_first() else None  # 样本检测
         detection_item = response.xpath(detection_item_xpath).extract_first() if response.xpath(detection_item_xpath).extract_first() else None # 检测项目
         vendor_logo = response.xpath(vendor_logo_xpath).extract_first() if response.xpath(vendor_logo_xpath).extract_first() else None  # 厂商logo
@@ -259,11 +271,28 @@ class ChromatographSpider(scrapy.Spider):
         })
 
         item['finish_link_count'] += 1
-        if (item['finish_link_count'] == item['total_link_count']) and (item['user_evaluation_finished'] is True):
+        if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
             yield item
 
     def parse_relevant_article(self, response):
+        '''
+        解析相关文章详情页，获取pdf链接
+        :param response:
+        :return:
+        '''
         item = response.meta['item']
+        pdf_link = response.json()['data']
+        item['relevant_article'].append({
+            'article_title': response.meta['article_title'],
+            'article_time': response.meta['article_time'],
+            'article_intro': response.meta['article_intro'],
+            'pdf_serial': response.meta['pdf_serial'],
+            'pdf_link': pdf_link
+        })
+
+        item['finish_link_count'] += 1
+        if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
+            yield item
 
 
     def parse_user_evaluation(self, response):
@@ -272,4 +301,32 @@ class ChromatographSpider(scrapy.Spider):
         :param response:
         :return:
         '''
-        pass
+        item = response.meta['item']
+        evaluation_divs = response.xpath(user_evaluation_xpath)
+        for evaluation_div in evaluation_divs:
+            user_name = evaluation_div.xpath('./div[1]/div/span/text()').extract_first()
+            user_avatar = evaluation_div.xpath('./div[1]/div/img/@src').extract_first()
+            evaluation_content = evaluation_div.xpath('./div[2]/text()').extract_first()
+            evaluate_time = evaluation_div.xpath('./div[3]/em/text()').extract_first()
+            item['user_evaluation'].append({
+                'user_name': user_name,
+                'user_avatar': user_avatar,
+                'evaluation_content': evaluation_content,
+                'evaluate_time': evaluate_time
+            })
+
+        evaluation_nums = re.search(r'(\d+)', response.xpath(user_evaluation_num_xpath).extract_first())
+        pages = int(evaluation_nums.group(1)) // 10 + 1
+
+        # 判断该当前是否是最后一页评论。若是，则修改标志为完成状态
+        if response.meta['page'] == pages:
+            item['user_evaluation_finished'] = True
+
+        if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
+            yield item
+
+        for page in range(2, pages+1):
+            yield PdfUrlRequest(url=response.url + '&page=' + str(page),
+                                callback=self.parse_user_evaluation,
+                                meta={'item': item,
+                                      'page': page})
