@@ -11,5 +11,5 @@ from itemadapter import ItemAdapter
 class InstrumentPipeline:
     def process_item(self, item, spider):
         print('*****')
-        # print(item)
+        print(item['user_evaluation'])
         return item

@@ -331,4 +331,4 @@ class ChromatographSpider(scrapy.Spider):
                                      callback=self.parse_user_evaluation,
                                      meta={'item': item,
                                            'page': page})
-# todo:这里的逻辑会导致重复生成一个item， 直接将标志设置为True则没有bug
+# todo:这里的逻辑会导致重复生成一个item， 直接将标志设置为True则没有bug。有四页评论会有3个item，2页评论会有一个item
