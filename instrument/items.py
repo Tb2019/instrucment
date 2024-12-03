@@ -13,6 +13,7 @@ class InstrumentItem(scrapy.Item):
 
 
 class NewProductItem(scrapy.Item):
+    instru_link = scrapy.Field()  # 仪器链接
     bi_category_1 = scrapy.Field()  # 基本信息-1级分类
     bi_category_2 = scrapy.Field()  # 基本信息-2级分类
     bi_category_3 = scrapy.Field()  # 基本信息-3级分类
@@ -37,6 +38,7 @@ class NewProductItem(scrapy.Item):
     relevant_article = scrapy.Field()   # 相关文章
     user_evaluation = scrapy.Field()  # 用户评价
 
+    category = scrapy.Field()  # 方案大类
     sub_links_num = scrapy.Field()
     finish_link_count = scrapy.Field()
     user_evaluation_finished = scrapy.Field()
