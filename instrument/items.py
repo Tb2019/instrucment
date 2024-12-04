@@ -42,3 +42,4 @@ class NewProductItem(scrapy.Item):
     sub_links_num = scrapy.Field()
     finish_link_count = scrapy.Field()
     user_evaluation_finished = scrapy.Field()
+    evaluation_finished = scrapy.Field()
