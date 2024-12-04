@@ -154,7 +154,7 @@ class ChromatographSpider(scrapy.Spider):
             item['after_sale_service'] = None
 
         # 包含子页面部分
-        sub_links_num = 0  # todo: 计算总的子页面链接数，方便决定什么时候返回item。但是评论里存在翻页，需要考虑这样是否可行
+        sub_links_num = 0  # 计算总的子页面链接数，方便决定什么时候返回item。但是评论里存在翻页，需要考虑这样是否可行
         finish_link_count = 0
 
         # 相关方案链接数
@@ -341,5 +341,3 @@ class ChromatographSpider(scrapy.Spider):
 
         if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
             yield item
-
-# todo:这里的逻辑会导致重复生成一个item， 直接将标志设置为True则没有bug。有四页评论会有3个item，2页评论会有一个item

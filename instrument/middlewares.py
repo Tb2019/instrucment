@@ -151,7 +151,7 @@ class request_middleware:
                 # 发送同步请求
                 response = self.session.get(request.url, headers={'User-Agent': UserAgent().random})
             # 创建 Scrapy 的 HtmlResponse 对象
-            # todo：如果请求失败，重新生成请求
+            # 如果请求失败，重新生成请求
             if 'seccaptcha.haplat.net/css/captcha.css' in response.text:
                 print("重试")
                 request_retry = request.replace(dont_filter=True)
