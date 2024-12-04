@@ -234,12 +234,14 @@ class ChromatographSpider(scrapy.Spider):
         user_evaluation = response.xpath(user_evaluation_link_xpath).extract_first()
         if user_evaluation:
             item['user_evaluation'] = []
+            item['evaluation_finished'] = []
             evaluation_link = response.urljoin(user_evaluation)
             yield scrapy.Request(url=evaluation_link,
                                  dont_filter=True,
                                  callback=self.parse_user_evaluation,
                                  meta={'item': item,
-                                       'page': 1})
+                                       'page': 1
+                                       })
         else:
             item['user_evaluation'] = None
 
@@ -307,28 +309,37 @@ class ChromatographSpider(scrapy.Spider):
             user_name = evaluation_div.xpath('./div[1]/div/span/text()').extract_first()
             user_avatar = evaluation_div.xpath('./div[1]/div/img/@src').extract_first()
             evaluation_content = evaluation_div.xpath('./div[2]/text()').extract_first()
-            evaluate_time = evaluation_div.xpath('./div[3]/em/text()').extract_first()
+            evaluate_img = evaluation_div.xpath('./div[@class="yqyx-TRANS-product-intro-usercomments-content-img flex"]/img/@src').extract()
+            evaluate_time = evaluation_div.xpath('./div[last()]/em/text()').extract_first()
             item['user_evaluation'].append({
                 'user_name': user_name,
                 'user_avatar': user_avatar,
                 'evaluation_content': evaluation_content,
+                'evaluate_img': evaluate_img,
                 'evaluate_time': evaluate_time
             })
 
-        evaluation_nums = re.search(r'(\d+)', response.xpath(user_evaluation_num_xpath).extract_first())
-        pages = int(evaluation_nums.group(1)) // 10 + 1
+        item['evaluation_finished'].append(response.meta['page'])
+
+        evaluation_nums = int(re.search(r'(\d+)', response.xpath(user_evaluation_num_xpath).extract_first()).group(1)) if response.xpath(user_evaluation_num_xpath).extract_first() else 0
+        pages = evaluation_nums // 10 + 1
+
+        if response.meta['page'] == 1:
+            for page in range(2, pages+1):
+                yield scrapy.Request(url=response.url.split('?')[0] + '?page=' + str(page),
+                                     callback=self.parse_user_evaluation,
+                                     priority=pages - page + 1,
+                                     meta={'item': item,
+                                           'page': page})
 
         # 判断该当前是否是最后一页评论。若是，则修改标志为完成状态
-        if response.meta['page'] == pages:
+        # if response.meta['page'] == pages:
+        #     item['user_evaluation_finished'] = True  # 这样不行必须要额外添加标志
+
+        if set(item['evaluation_finished']) == set(range(1, pages + 1)):
             item['user_evaluation_finished'] = True
 
         if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
             yield item
 
-        for page in range(2, pages+1):
-            if not item['user_evaluation_finished']:
-                yield scrapy.Request(url=response.url.split('?')[0] + '?page=' + str(page),
-                                     callback=self.parse_user_evaluation,
-                                     meta={'item': item,
-                                           'page': page})
 # todo:这里的逻辑会导致重复生成一个item， 直接将标志设置为True则没有bug。有四页评论会有3个item，2页评论会有一个item
