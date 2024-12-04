@@ -43,3 +43,10 @@ class NewProductItem(scrapy.Item):
     finish_link_count = scrapy.Field()
     user_evaluation_finished = scrapy.Field()
     evaluation_finished = scrapy.Field()
+
+
+class ApplicationFieldItem(scrapy.Item):
+    bi_category_2 = scrapy.Field()
+    bi_category_3 = scrapy.Field()
+    instru_name = scrapy.Field()
+    field = scrapy.Field()
