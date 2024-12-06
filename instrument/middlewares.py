@@ -15,6 +15,10 @@ from instrument.Pdf_url_request import PdfUrlRequest
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
 
+# proxy = {
+#     'http': '127.0.0.1:7899',
+#     'https': '127.0.0.1:7899',
+# }
 
 class InstrumentSpiderMiddleware:
     # Not all methods need to be defined. If a method is not defined,
@@ -119,16 +123,23 @@ class request_middleware:
         # 获取pdf链接用到以下配置
         self.url = "https://www.instrument.com.cn/netshow/combo/paper/getAttachmentUrl"
         self.headers = {
-                    'Accept': 'application/json, text/javascript, */*; q=0.01',
-                    'Accept-Language': 'zh-CN,zh;q=0.9',
-                    'Connection': 'keep-alive',
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                    'Cookie': 'mobileValid=85de113a163b97513476bd80075ed6e2; imtoken=07b7c6774861c7907d078cef54eeb88c; CheckValid=25277ff477881fe3d333edfb77b70dbb; imstep=1733191848; passwordValid=b7be5bfb0e9daf2c24663eddcdd96b59; useid=6825953; mobile=b47ebe9bea209181829fecc5b23a29ff; nickname=Ins%255f98d68598; username_guestbook=6825953; userType=0; privacyVersion=62; username=Ins_98d68598; ; HMF_CI=cc1a1861b124063fca0360db7e848979eaea11c11c84c575f36e003b25acad310a800fe79db6c55ffcc7a734f262fe4aa8c8e1957d4ebaa31acb6fd9a4270f04dc',
-                    'DNT': '1',
-                    'Origin': 'https://www.instrument.com.cn',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/127.0.0.0 Safari/537.36 Edg/127.0.0.0',
-                    'X-Requested-With': 'XMLHttpRequest'
-                    }
+                          'Cache-Control': 'no-cache',
+                          'Connection': 'keep-alive',
+                          'Cookie': 'sajssdk_2015_cross_new_user=1; 3i=2024120610080925; isnotice=2; isfirstin=false; mobileValid=85de113a163b97513476bd80075ed6e2; imtoken=957c715e107be62039d81a6caa09af1a; CheckValid=25277ff477881fe3d333edfb77b70dbb; imstep=1733450951; passwordValid=b7be5bfb0e9daf2c24663eddcdd96b59; useid=6825953; mobile=b47ebe9bea209181829fecc5b23a29ff; nickname=Ins%255f98d68598; username_guestbook=6825953; userType=0; privacyVersion=62; username=Ins_98d68598; sensorsdata2015jssdkcross=%7B%22distinct_id%22%3A%22Ins_98d68598%22%2C%22first_id%22%3A%2219399b9799116e5-0eaebd7d39cd4a8-4c657b58-1821369-19399b9799214c4%22%2C%22props%22%3A%7B%7D%2C%22identities%22%3A%22eyIkaWRlbnRpdHlfY29va2llX2lkIjoiMTkzOTliOTc5OTExNmU1LTBlYWViZDdkMzljZDRhOC00YzY1N2I1OC0xODIxMzY5LTE5Mzk5Yjk3OTkyMTRjNCIsIiRpZGVudGl0eV9sb2dpbl9pZCI6Ikluc185OGQ2ODU5OCJ9%22%2C%22history_login_id%22%3A%7B%22name%22%3A%22%24identity_login_id%22%2C%22value%22%3A%22Ins_98d68598%22%7D%2C%22%24device_id%22%3A%2219399b9799116e5-0eaebd7d39cd4a8-4c657b58-1821369-19399b9799214c4%22%7D; sensorsKey=Ins_98d68598; HMF_CI=;',
+                          'DNT': '1',
+                          'Origin': 'https://www.instrument.com.cn',
+                          'Pragma': 'no-cache',
+                          'Sec-Fetch-Dest': 'empty',
+                          'Sec-Fetch-Mode': 'cors',
+                          'Sec-Fetch-Site': 'same-origin',
+                          'User-Agent': UserAgent().random,
+                          'accept': 'application/json, text/javascript, */*; q=0.01',
+                          'accept-language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+                          'sec-ch-ua': '"Not)A;Brand";v="99", "Microsoft Edge";v="127", "Chromium";v="127"',
+                          'sec-ch-ua-mobile': '?0',
+                          'sec-ch-ua-platform': '"Windows"',
+                          'x-requested-with': 'XMLHttpRequest'
+                        }
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -145,14 +156,19 @@ class request_middleware:
         # 使用 requests 会话发送请求
         def send_request():
             if isinstance(request, PdfUrlRequest):
-                payload = 'paperId={}&pType=1&device=PC'.format(request.meta['pdf_serial'])
-                response = requests.request("POST", self.url, headers=self.headers, data=payload)
+                payload = {'paperId': f'{request.meta["pdf_serial"]}',
+                           'pType': '1',
+                           'device': 'PC'}
+                files = [
+
+                ]
+                response = requests.request("POST", self.url, headers=self.headers, data=payload, files=files)
             else:
                 # 发送同步请求
                 response = self.session.get(request.url, headers={'User-Agent': UserAgent().random})
             # 创建 Scrapy 的 HtmlResponse 对象
             # 如果请求失败，重新生成请求
-            if 'seccaptcha.haplat.net/css/captcha.css' in response.text:
+            if 'seccaptcha.haplat.net/css/captcha.css' in response.text or response.status_code != 200:
                 print("重试")
                 request_retry = request.replace(dont_filter=True)
                 return request_retry
