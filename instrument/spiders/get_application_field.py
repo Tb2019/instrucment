@@ -1,6 +1,6 @@
 import scrapy
 from instrument.items import ApplicationFieldItem
-
+from scrapy.utils.project import get_project_settings
 
 instru_info_divs_xpath = '//div[@class="tertiaryClasstC-left-list"]/div[contains(@class, "tertiaryClasstC-left-list-item")]'
 
@@ -12,10 +12,13 @@ class GetApplicationFieldSpider(scrapy.Spider):
         }
     }
     allowed_domains = ["www.instrument.com.cn"]
-    start_urls = ["https://www.instrument.com.cn/show/sort-1"]
+    start_urls = get_project_settings()['START_URLS']
+    # start_urls = ["https://www.instrument.com.cn/show/sort-1"]
 
-    bi_category_1 = '化学分析仪器'
-    bi_category_2 = '色谱仪器'
+    bi_category_1 = get_project_settings()['BI_CATEGORY_1']
+    bi_category_2 = get_project_settings()['BI_CATEGORY_2']
+    # bi_category_1 = '化学分析仪器'
+    # bi_category_2 = '色谱仪器'
 
     def parse(self, response):
         '''
