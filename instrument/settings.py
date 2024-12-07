@@ -7,7 +7,50 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+# 启动参数
+BI_CATEGORY_1 = '化学分析仪器'
+BI_CATEGORY_2 = '色谱仪器'
+START_URLS = ['https://www.instrument.com.cn/show/sort-1/']
+
+# 连接数据库
+MYSQL_HOST = '192.168.2.12'
+MYSQL_PORT = 3306
+MYSQL_DB = 'alpha_search_update'
+MYSQL_USER = 'root'
+MYSQL_PASSWORD = 'Shufang_@919'
+MYSQL_TABLE = 'search_instrument_selection'
+TABLE_FIELDS = ['bi_category_1',
+                'bi_category_2',
+                'bi_category_3',
+                'instru_link',
+                'bi_brand',
+                'bi_origin_category',
+                'bi_origin',
+                'bi_manufacturer_type',
+                'bi_instrument_name',
+                'bi_model_number',
+                'bi_manufacturer_name',
+                'bi_manufacturer_logo',
+                'bi_business_license_status',
+                'bi_rating',
+                'bi_reference_price',
+                'bi_sample_src',
+                'bi_instrument_image',
+                'core_parameters',
+                'product_description',
+                'after_sale_service',
+                # 'sub_links_num',
+                # 'finish_link_count',
+                # 'user_evaluation_finished',
+                'relevant_solutions',
+                'relevant_article',
+                'user_evaluation',
+                # 'evaluation_finished',
+                'bi_application_field']
+
 BOT_NAME = "instrument"
+
+FILES_STORE = './instrument/pdfs'
 
 SPIDER_MODULES = ["instrument.spiders"]
 NEWSPIDER_MODULE = "instrument.spiders"
@@ -66,6 +109,8 @@ DOWNLOADER_MIDDLEWARES = {
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
    "instrument.pipelines.InstrumentPipeline": 300,
+   "instrument.pipelines.InstruPdfDownloadPipeline": 301,
+   "instrument.pipelines.Save2MysqlPipeline": 302
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
