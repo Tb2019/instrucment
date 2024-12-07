@@ -3,6 +3,7 @@ import re
 import scrapy
 from instrument.Pdf_url_request import PdfUrlRequest
 from instrument.items import NewProductItem
+from scrapy.utils.project import get_project_settings
 
 xpath_selectors_single_info = {
     ## 基本信息部分
@@ -67,8 +68,22 @@ user_evaluation_num_xpath = '//div[@class="pc-paging flex a-c j-c bgf"]/span/tex
 
 class ChromatographSpider(scrapy.Spider):
     name = "chromatograph"
-    allowed_domains = ["www.instrument.com.cn"]
-    start_urls = ["https://www.instrument.com.cn/show/sort-1/"]
+    allowed_domains = ["www.instrument.com.cn", "ng1.17img.cn"]
+    # start_urls = ["https://www.instrument.com.cn/show/sort-1/"]
+    start_urls = get_project_settings()['START_URLS']
+
+    # @classmethod
+    # def from_crawler(cls, crawler, *args, **kwargs):
+    #     '''
+    #     获取start_urls
+    #     :param crawler:
+    #     :param args:
+    #     :param kwargs:
+    #     :return:
+    #     '''
+    #     spider = cls()
+    #     spider.start_urls = crawler.settings['START_URLS']
+    #     return spider
 
     def parse(self, response):
         '''
@@ -77,8 +92,10 @@ class ChromatographSpider(scrapy.Spider):
         :return:
         '''
         item = NewProductItem()
-        item['bi_category_1'] = '化学分析仪器'
-        item['bi_category_2'] = '色谱仪器'
+        item['bi_category_1'] = self.crawler.settings['BI_CATEGORY_1']
+        item['bi_category_2'] = self.crawler.settings['BI_CATEGORY_2']
+        # item['bi_category_1'] = '化学分析仪器'
+        # item['bi_category_2'] = '色谱仪器'
 
         category_3_info_eles = response.xpath('//div[@class="pc-towType-yxt bgf pt16 pl16 mb16"]/div/a')
         for ele in category_3_info_eles:
@@ -234,7 +251,7 @@ class ChromatographSpider(scrapy.Spider):
         user_evaluation = response.xpath(user_evaluation_link_xpath).extract_first()
         if user_evaluation:
             item['user_evaluation'] = []
-            item['evaluation_finished'] = []
+            item['evaluation_finished'] = []  # 已经完成的page
             evaluation_link = response.urljoin(user_evaluation)
             yield scrapy.Request(url=evaluation_link,
                                  dont_filter=True,
