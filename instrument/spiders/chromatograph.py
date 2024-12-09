@@ -102,8 +102,9 @@ class ChromatographSpider(scrapy.Spider):
             item['bi_category_3'] = ele.xpath('.//p[contains(@class, "tit omit")]/text()').extract_first()
             link = response.urljoin(ele.xpath('./@href').extract_first())
             item_ = item.copy()  # 深拷贝。否则传递的是引用，会导致后续的item被修改，值是相同的
-            yield scrapy.Request(url=link, callback=self.parse_detail_category_3_list, meta={'item': item_})
-            break
+            yield scrapy.Request(url=link, callback=self.parse_detail_category_3_list, meta={'item': item_,
+                                                                                             'page': 1})
+            # break
 
     def parse_detail_category_3_list(self, response):
         '''
@@ -115,24 +116,26 @@ class ChromatographSpider(scrapy.Spider):
         # 提取每页中详情页链接
         page_list_infos = response.xpath('//div[@class="tertiaryClasstC-left-list"]/div[contains(@class, "tertiaryClasstC-left-list-item")]')
         for info in page_list_infos:
-            href = response.urljoin(info.xpath('//div[@class="flex a-c"]/a/@href').extract_first())
+            href = response.urljoin(info.xpath('.//div[@class="flex a-c"]/a/@href').extract_first())
             # print(href)
             item_ = response.meta['item'].copy()  # 深拷贝。否则传递的是引用，会导致后续的item被修改，值是相同的
             item_['instru_link'] = href
             yield scrapy.Request(url=href, callback=self.parse_detail, meta={'item': item_})
-            break
+            # break
 
         # 翻页
         # 计算页数
         base_url = response.url.split('?page')[0]
         # print('base:', base_url)
-        total_num = int(response.xpath('//div[@class="tertiaryClasstC-left-tab-sort-total"]//em/text()').extract_first())
-        total_page = total_num // 30 + 1
-        for i in range(2, total_page + 1):
-            # print(base_url + '?page=' + str(i))
-            item_ = response.meta['item'].copy()
-            yield scrapy.Request(url=base_url + '?page=' + str(i), callback=self.parse_detail_category_3_list, meta={'item': item_})
-            break
+        if response.meta['page'] == 1:
+            total_num = int(response.xpath('//div[@class="tertiaryClasstC-left-tab-sort-total"]//em/text()').extract_first())
+            total_page = total_num // 30 + 1
+            for i in range(2, total_page + 1):
+                # print(base_url + '?page=' + str(i))
+                item_ = response.meta['item'].copy()
+                yield scrapy.Request(url=base_url + '?page=' + str(i), callback=self.parse_detail_category_3_list, meta={'item': item_,
+                                                                                                                         'page': i})
+                # break
 
     def parse_detail(self, response):
         '''
@@ -239,6 +242,7 @@ class ChromatographSpider(scrapy.Spider):
                 article_intro = li.xpath('./p/text()').extract_first()
                 yield PdfUrlRequest(url=article_href,
                                     callback=self.parse_relevant_article,
+                                    dont_filter=True,
                                     meta={'item': item,
                                           'article_title': article_title,
                                           'article_time': article_time,
@@ -270,27 +274,42 @@ class ChromatographSpider(scrapy.Spider):
         '''
         item = response.meta['item']
         category = response.meta['category']  # 方案大类
-        sample_detection = response.xpath(sample_detection_xpath).extract_first() if response.xpath(sample_detection_xpath).extract_first() else None  # 样本检测
-        detection_item = response.xpath(detection_item_xpath).extract_first() if response.xpath(detection_item_xpath).extract_first() else None # 检测项目
-        vendor_logo = response.xpath(vendor_logo_xpath).extract_first() if response.xpath(vendor_logo_xpath).extract_first() else None  # 厂商logo
-        vendor_name = response.xpath(vendor_name_xpath).extract_first() if response.xpath(vendor_name_xpath).extract_first() else None  # 厂商名称
-        solution_detail = response.xpath(solution_detail_xpath).get()
+        try:
+            sample_detection = response.xpath(sample_detection_xpath).extract_first() if response.xpath(sample_detection_xpath).extract_first() else None  # 样本检测
+            detection_item = response.xpath(detection_item_xpath).extract_first() if response.xpath(detection_item_xpath).extract_first() else None # 检测项目
+            vendor_logo = response.xpath(vendor_logo_xpath).extract_first() if response.xpath(vendor_logo_xpath).extract_first() else None  # 厂商logo
+            vendor_name = response.xpath(vendor_name_xpath).extract_first() if response.xpath(vendor_name_xpath).extract_first() else None  # 厂商名称
+            solution_detail = response.xpath(solution_detail_xpath).get()
 
-        item['relevant_solutions'][category].append({
-            'solution_img': response.meta['solution_img'],
-            'solution_title': response.meta['solution_title'],
-            'solution_intro': response.meta['solution_intro'],
-            'solution_tag': response.meta['solution_tag'],
-            'publication_time': response.meta['solution_time'],
-            'sample_detection': sample_detection,
-            'detection_item': detection_item,
-            'vendor_logo': vendor_logo,
-            'vendor_name': vendor_name,
-            'solution_detail': solution_detail
-        })
+            item['relevant_solutions'][category].append({
+                'solution_img': response.meta['solution_img'],
+                'solution_title': response.meta['solution_title'],
+                'solution_intro': response.meta['solution_intro'],
+                'solution_tag': response.meta['solution_tag'],
+                'publication_time': response.meta['solution_time'],
+                'sample_detection': sample_detection,
+                'detection_item': detection_item,
+                'vendor_logo': vendor_logo,
+                'vendor_name': vendor_name,
+                'solution_detail': solution_detail
+            })
+        except:  # 页面返回500的json，上面报错
+            item['relevant_solutions'][category].append({
+                'solution_img': response.meta['solution_img'],
+                'solution_title': response.meta['solution_title'],
+                'solution_intro': response.meta['solution_intro'],
+                'solution_tag': response.meta['solution_tag'],
+                'publication_time': response.meta['solution_time'],
+                'sample_detection': None,
+                'detection_item': None,
+                'vendor_logo': None,
+                'vendor_name': None,
+                'solution_detail': None
+            })
 
         item['finish_link_count'] += 1
         if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
+            # print(item['bi_instrument_name'])
             yield item
 
     def parse_relevant_article(self, response):
@@ -311,6 +330,7 @@ class ChromatographSpider(scrapy.Spider):
 
         item['finish_link_count'] += 1
         if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
+            # print(item['bi_instrument_name'])
             yield item
 
 
@@ -357,4 +377,5 @@ class ChromatographSpider(scrapy.Spider):
             item['user_evaluation_finished'] = True
 
         if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
+            # print(item['bi_instrument_name'])
             yield item
