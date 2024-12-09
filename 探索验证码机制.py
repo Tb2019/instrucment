@@ -4,6 +4,7 @@ import tls_client
 import requests
 from fake_useragent import UserAgent
 import pyhttpx
+from instrument.get_proxy import ProxyPool
 
 
 # session = tls_client.Session(
@@ -63,26 +64,30 @@ session = requests.session()
 # }
 
 urls = [
-'https://www.instrument.com.cn/show/category-1/',
-'https://www.instrument.com.cn/show/category-23/',
-'https://www.instrument.com.cn/show/category-24/',
-'https://www.instrument.com.cn/show/category-456/',
-'https://www.instrument.com.cn/show/category-27/',
-'https://www.instrument.com.cn/show/category-29/',
-'https://www.instrument.com.cn/show/category-323/',
-'https://www.instrument.com.cn/show/category-26/',
-'https://www.instrument.com.cn/show/category-635/',
-'https://www.instrument.com.cn/show/category-1747/',
-'https://www.instrument.com.cn/show/category-632/',
-'https://www.instrument.com.cn/show/category-863/'
+# 'https://www.instrument.com.cn',
+# 'https://www.instrument.com.cn/application/Solution-940521.html',
+'https://www.instrument.com.cn/application/Solution-236403.html',
+# 'https://www.instrument.com.cn/application/Solution-519664.html',
+# 'https://www.instrument.com.cn/application/Solution-335415.html',
+# 'https://www.instrument.com.cn/application/Solution-913422.html',
+# 'https://www.instrument.com.cn/show/category-323/',
+# 'https://www.instrument.com.cn/show/category-26/',
+# 'https://www.instrument.com.cn/show/category-635/',
+# 'https://www.instrument.com.cn/show/category-1747/',
+# 'https://www.instrument.com.cn/show/category-632/',
 ]
-
+pool = ProxyPool()
+proxy = pool.load_proxy(from_clash=True)
+count = 0
 for url in urls:
-    resp = session.get(url, headers={'User-Agent': UserAgent().random})
-    if resp.status_code == 200:
+    resp = session.get(url, headers={'User-Agent': UserAgent().random}, proxies=proxy, timeout=10)
+    if 'seccaptcha.haplat.net/css/captcha.css' not in resp.text and '访问行为存在异常' not in resp.text and resp.status_code == 200:
+        # count += 1
         print(url, '成功')
+        # if count % 10 == 0:
         print(resp.text)
     else:
+        print('***失败')
         print(resp.status_code)
         print(resp)
         print(resp.text)
