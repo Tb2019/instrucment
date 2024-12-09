@@ -3,7 +3,9 @@
 # Don't forget to add your pipeline to the ITEM_PIPELINES setting
 # See: https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 import json
+import os
 import logging
+import re
 import pymysql
 import scrapy.pipelines.files
 # useful for handling different item types with a single interface
@@ -40,7 +42,8 @@ class InstrumentPipeline:
 class InstruPdfDownloadPipeline(scrapy.pipelines.files.FilesPipeline):
     def file_path(self, request, response=None, info=None, *, item=None):
         pdf_serial = request.meta['pdf_serial']
-        file_name = f'{pdf_serial}.pdf'
+        file_type = request.meta['file_type']
+        file_name = f'{pdf_serial}.{file_type}'
         return file_name
 
     def item_completed(self, results, item, info):
@@ -51,7 +54,14 @@ class InstruPdfDownloadPipeline(scrapy.pipelines.files.FilesPipeline):
             for article in item['relevant_article']:
                 pdf_serial = article['pdf_serial']
                 pdf_link = article['pdf_link']
-                yield scrapy.Request(pdf_link, meta={'pdf_serial': pdf_serial})
+                if '文件不存在' not in pdf_link:
+                    file_type = re.search(r'https.*/.*?\.(.*?)\?', pdf_link).group(1)
+                    yield scrapy.Request(pdf_link, meta={'pdf_serial': pdf_serial,
+                                                         'file_type': file_type})
+                else:
+                    article['pdf_serial'] = None
+                    article['pdf_link'] = None
+
 
     def media_failed(self, failure, request, info):
         logging.error(f"Download failed: {failure}, URL: {request.url}")
@@ -126,5 +136,8 @@ class ApplicationFieldPipeline:
         # return item
 
     def close_spider(self, spider):
+        directory = f'./instrument/ApplicationField/{self.bi_category_2}'
+        # 检查路径是否存在，不存在则创建
+        os.makedirs(directory, exist_ok=True)
         with open(f'./instrument/ApplicationField/{self.bi_category_2}/application_field.json', 'w', encoding='utf-8') as f:
             json.dump(self.result, f, ensure_ascii=False)
