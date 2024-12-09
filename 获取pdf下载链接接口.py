@@ -1,9 +1,11 @@
 import requests
 from fake_useragent import UserAgent
+from instrument.get_proxy import ProxyPool
 
+pool = ProxyPool()
 url = "https://www.instrument.com.cn/netshow/combo/paper/getAttachmentUrl"
 
-payload = {'paperId': '1014897',
+payload = {'paperId': '912950',
 'pType': '1',
 'device': 'PC'}
 files=[
@@ -28,6 +30,6 @@ headers = {
   'x-requested-with': 'XMLHttpRequest'
 }
 
-response = requests.request("POST", url, headers=headers, data=payload, files=files)
+response = requests.request("POST", url, headers=headers, data=payload, files=files, proxies=pool.load_proxy(from_clash=True))
 
 print(response.text)
