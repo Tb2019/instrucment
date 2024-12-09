@@ -50,7 +50,7 @@ TABLE_FIELDS = ['bi_category_1',
 
 BOT_NAME = "instrument"
 
-FILES_STORE = './instrument/pdfs'
+FILES_STORE = r'C:\Users\98214\Desktop\pdfs'
 
 SPIDER_MODULES = ["instrument.spiders"]
 NEWSPIDER_MODULE = "instrument.spiders"
@@ -61,7 +61,7 @@ NEWSPIDER_MODULE = "instrument.spiders"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = False
-LOG_LEVEL = "WARNING"
+LOG_LEVEL = "INFO"
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
 #CONCURRENT_REQUESTS = 32
@@ -69,7 +69,10 @@ LOG_LEVEL = "WARNING"
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 3
+DOWNLOAD_TIMEOUT = 15
+# CONCURRENT_REQUESTS = 8
+DOWNLOAD_DELAY = 2
+# CONCURRENT_REQUESTS_PER_DOMAIN = 8
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
