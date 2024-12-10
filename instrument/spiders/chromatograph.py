@@ -120,7 +120,7 @@ class ChromatographSpider(scrapy.Spider):
             # print(href)
             item_ = response.meta['item'].copy()  # 深拷贝。否则传递的是引用，会导致后续的item被修改，值是相同的
             item_['instru_link'] = href
-            yield scrapy.Request(url=href, callback=self.parse_detail, meta={'item': item_})
+            yield scrapy.Request(url=href, callback=self.parse_detail, dont_filter=True, meta={'item': item_})
             # break
 
         # 翻页
@@ -146,7 +146,7 @@ class ChromatographSpider(scrapy.Spider):
         item = response.meta['item']
         # 填充单一信息
         for key, xpath in xpath_selectors_single_info.items():
-            item[key] = response.xpath(xpath).extract_first() if response.xpath(xpath).extract_first() else None
+            item[key] = response.xpath(xpath).extract_first().strip() if response.xpath(xpath).extract_first() else None
         # 填充多信息字段
         for key, xpath in xpath_selectors_multi_info.items():
             item[key] = response.xpath(xpath).extract() if response.xpath(xpath).extract() else None
@@ -265,6 +265,10 @@ class ChromatographSpider(scrapy.Spider):
                                        })
         else:
             item['user_evaluation'] = None
+            item['user_evaluation_finished'] = True
+            if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
+                # print(item['bi_instrument_name'])
+                yield item
 
     def parse_relevant_solutions(self, response):
         '''
@@ -319,7 +323,10 @@ class ChromatographSpider(scrapy.Spider):
         :return:
         '''
         item = response.meta['item']
-        pdf_link = response.json()['data']
+        try:
+            pdf_link = response.json()['data']
+        except:
+            pdf_link = None
         item['relevant_article'].append({
             'article_title': response.meta['article_title'],
             'article_time': response.meta['article_time'],

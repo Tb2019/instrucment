@@ -70,9 +70,9 @@ LOG_LEVEL = "INFO"
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
 DOWNLOAD_TIMEOUT = 15
-# CONCURRENT_REQUESTS = 8
+CONCURRENT_REQUESTS = 8
 DOWNLOAD_DELAY = 2
-# CONCURRENT_REQUESTS_PER_DOMAIN = 8
+CONCURRENT_REQUESTS_PER_DOMAIN = 8
 # The download delay setting will honor only one of:
 #CONCURRENT_REQUESTS_PER_DOMAIN = 16
 #CONCURRENT_REQUESTS_PER_IP = 16
