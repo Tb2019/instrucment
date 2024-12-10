@@ -143,7 +143,7 @@ class request_middleware:
                         }
         self.headers = {'User-Agent': UserAgent().random}
         self.pool = ProxyPool()
-        self.proxy = self.pool.load_proxy(from_clash=True)
+        # self.proxy = self.pool.load_proxy(from_clash=False)
 
     @classmethod
     def from_crawler(cls, crawler):
@@ -159,6 +159,10 @@ class request_middleware:
 
         # 使用 requests 会话发送请求
         def send_request():
+            self.proxy = self.pool.load_proxy(from_clash=False)
+            self.pdf_headers['User-Agent'] = UserAgent().random
+            self.headers['User-Agent'] = UserAgent().random
+            self.session = requests.Session()
             try:
                 if isinstance(request, PdfUrlRequest):
                     payload = {'paperId': f'{request.meta["pdf_serial"]}',
@@ -172,7 +176,7 @@ class request_middleware:
                     # 发送同步请求
                     response = self.session.get(request.url, headers=self.headers, proxies=self.proxy)
             except:
-                self.proxy = self.pool.load_proxy(from_clash=True)
+                self.proxy = self.pool.load_proxy(from_clash=False)
                 self.pdf_headers['User-Agent'] = UserAgent().random
                 self.headers['User-Agent'] = UserAgent().random
                 self.session = requests.Session()
@@ -185,12 +189,6 @@ class request_middleware:
                 # print(response.request.body)
                 # print(response.text)
                 # print("重试")
-                self.proxy = self.pool.load_proxy(from_clash=True)
-                # meta_ = request.meta.copy()
-                # meta_['proxy'] = self.proxy
-                self.pdf_headers['User-Agent'] = UserAgent().random
-                self.headers['User-Agent'] = UserAgent().random
-                self.session = requests.Session()
                 # request_retry = request.replace(dont_filter=True, headers=self.headers, meta=meta_)
                 request_retry = request.replace(dont_filter=True)
                 return request_retry
