@@ -54,7 +54,7 @@ class InstruPdfDownloadPipeline(scrapy.pipelines.files.FilesPipeline):
             for article in item['relevant_article']:
                 pdf_serial = article['pdf_serial']
                 pdf_link = article['pdf_link']
-                if '文件不存在' not in pdf_link:
+                if pdf_link and '文件不存在' not in pdf_link :
                     file_type = re.search(r'https.*/.*?\.(.*?)\?', pdf_link).group(1)
                     yield scrapy.Request(pdf_link, meta={'pdf_serial': pdf_serial,
                                                          'file_type': file_type})
