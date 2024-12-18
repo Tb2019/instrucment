@@ -10,7 +10,7 @@ from scrapy import signals
 import requests
 from scrapy.http import HtmlResponse
 from fake_useragent import UserAgent
-from instrument.Pdf_url_request import PdfUrlRequest
+from instrument.Pdf_url_request import PdfUrlRequest, PdfDownloadRequest
 from instrument.get_proxy import ProxyPool
 
 # useful for handling different item types with a single interface
@@ -123,6 +123,24 @@ class request_middleware:
         self.session = requests.Session()  # 创建一个请求会话
         # 获取pdf链接用到以下配置
         self.url = "https://www.instrument.com.cn/netshow/combo/paper/getAttachmentUrl"
+        self.pdf_download_headers = {
+                                      'Accept': '*/*',
+                                      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8,en-GB;q=0.7,en-US;q=0.6',
+                                      'Cache-Control': 'no-cache',
+                                      'Connection': 'keep-alive',
+                                      'DNT': '1',
+                                      'Pragma': 'no-cache',
+                                      'Sec-Fetch-Dest': 'document',
+                                      'Sec-Fetch-Mode': 'navigate',
+                                      'Sec-Fetch-Site': 'none',
+                                      'Sec-Fetch-User': '?1',
+                                      'Upgrade-Insecure-Requests': '1',
+                                      'User-Agent': UserAgent().random,
+                                      'sec-ch-ua': '"Not)A;Brand";v="99", "Microsoft Edge";v="127", "Chromium";v="127"',
+                                      'sec-ch-ua-mobile': '?0',
+                                      'sec-ch-ua-platform': '"Windows"'
+                                    }
+
         self.pdf_headers = {
                           'Cache-Control': 'no-cache',
                           'Connection': 'keep-alive',
@@ -159,8 +177,9 @@ class request_middleware:
 
         # 使用 requests 会话发送请求
         def send_request():
-            self.proxy = self.pool.load_proxy(from_clash=False)
+            self.proxy_key, self.proxy = self.pool.load_proxy(from_clash=False)
             self.pdf_headers['User-Agent'] = UserAgent().random
+            self.pdf_download_headers['User-Agent'] = UserAgent().random
             self.headers['User-Agent'] = UserAgent().random
             self.session = requests.Session()
             try:
@@ -172,11 +191,13 @@ class request_middleware:
 
                     ]
                     response = requests.request("POST", self.url, headers=self.pdf_headers, data=payload, files=files, proxies=self.proxy)
+                elif isinstance(request, PdfDownloadRequest):
+                    response = self.session.get(request.url, headers=self.pdf_download_headers, proxies=self.proxy)
                 else:
                     # 发送同步请求
                     response = self.session.get(request.url, headers=self.headers, proxies=self.proxy)
             except:
-                self.proxy = self.pool.load_proxy(from_clash=False)
+                self.proxy_key, self.proxy = self.pool.load_proxy(from_clash=False)
                 self.pdf_headers['User-Agent'] = UserAgent().random
                 self.headers['User-Agent'] = UserAgent().random
                 self.session = requests.Session()
@@ -184,6 +205,10 @@ class request_middleware:
                 return request_retry
             # 创建 Scrapy 的 HtmlResponse 对象
             # 如果请求失败，重新生成请求
+            if '访问行为存在异常' in response.text:
+                self.pool.delete_proxy(self.proxy_key)
+                request_retry = request.replace(dont_filter=True)
+                return request_retry
             if ('seccaptcha.haplat.net/css/captcha.css' or '访问行为存在异常') in response.text:
                 # print(response.request.url)
                 # print(response.request.body)
