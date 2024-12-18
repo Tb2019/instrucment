@@ -5,24 +5,21 @@ import redis
 import json
 
 
-
-
-
-
 class ProxyPool:
+    count = 105
     def __init__(self):
         self.api_url_xx = "https://api.xiaoxiangdaili.com/ip/get"
         self.xx_config = {
             'app_key': '1183579271252561920',
-            'app_secret': 'IWherJl8',
+            'app_secret': '77cu51xd',
         }
-        self.api_url_kdl = "https://dps.kdlapi.com/api/getdps/?secret_id=o13mayjko964i93b7flb&signature=fhgfs05ulevygxyq0ufckotwqgf9ebxe&num=35&pt=1&sep=1"
+        self.api_url_kdl = "https://dps.kdlapi.com/api/getdps/?secret_id=opzzs67scgogfm6cztnp&signature=ugxfv96ylbleo7e8mc77pa5wqv15tgw7&num=35&pt=1&sep=1"
         self.kdl_config = {
-            'username': 'd3806958776',
-            'password': 'ko5c7bvx',
+            'username': 't13448766863841',
+            'password': '77cu51xd',
         }
         self.db = redis.StrictRedis(host='localhost', port=6379, password='123456', db=2, decode_responses=True)
-        self.count = 0
+
 
     # def get_proxy(self):
     #     '''
@@ -50,36 +47,67 @@ class ProxyPool:
     #             time.sleep(9)
     #             # return proxies
 
+    # def get_proxy(self):
+    #     '''
+    #     快代理,集中提取，每次提取35个
+    #     :return:
+    #     '''
+    #     proxy_ips = requests.get(self.api_url_kdl).text.split('\r\n')
+    #     for proxy_ip in proxy_ips:
+    #         proxies = {
+    #                 "http": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": self.kdl_config['username'], "pwd": self.kdl_config['password'], "proxy": proxy_ip},
+    #                 "https": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": self.kdl_config['username'], "pwd": self.kdl_config['password'], "proxy": proxy_ip}
+    #             }
+    #         self.count += 1
+    #         self.db.set('ip'+str(self.count), json.dumps(proxies), ex=2*60*60)
+    #     proxy_num = self.proxy_count()
+    #     if proxy_num < 100:
+    #         self.get_proxy()
+
     def get_proxy(self):
         '''
-        快代理,集中提取，每次提取35个
+        快代理,隧道代理
         :return:
         '''
-        proxy_ips = requests.get(self.api_url_kdl).text.split('\r\n')
-        for proxy_ip in proxy_ips:
-            proxies = {
-                    "http": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": self.kdl_config['username'], "pwd": self.kdl_config['password'], "proxy": proxy_ip},
-                    "https": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": self.kdl_config['username'], "pwd": self.kdl_config['password'], "proxy": proxy_ip}
-                }
-            self.count += 1
-            self.db.set('ip'+str(self.count), json.dumps(proxies), ex=7200)
+        tunnel = "i230.kdltpspro.com:15818"
+        proxies = {
+                            "http": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": self.kdl_config['username'], "pwd": self.kdl_config['password'], "proxy": tunnel},
+                            "https": "http://%(user)s:%(pwd)s@%(proxy)s/" % {"user": self.kdl_config['username'], "pwd": self.kdl_config['password'], "proxy": tunnel}
+                        }
+        self.db.set('tunnel', json.dumps(proxies))
 
 
     def load_proxy(self, from_clash=False):
         if from_clash:
-            return {
+            return None, {
                 "http": "http://127.0.0.1:7899",
                 "https": "http://127.0.0.1:7899"
             }
 
+        # proxy_num = self.proxy_count()
+        # if proxy_num < 100:
+        #     self.get_proxy()
+
         key = self.db.randomkey()
         if key:
-            return json.loads(self.db.get(key))
+            return key, json.loads(self.db.get(key))
         else:
             # time.sleep(5)
             # return self.load_proxy()
+            print('代理池已空，重新获取')
             self.get_proxy()
             return self.load_proxy()
+
+    def delete_proxy(self, key):
+        self.db.delete(key)
+        print('删除了代理：', key)
+        num_proxy = self.proxy_count()
+        if num_proxy < 100:
+            self.get_proxy()
+
+    def proxy_count(self):
+        count = self.db.dbsize()
+        return count
 
     def get_all(self):
         return self.db.keys()
@@ -90,3 +118,5 @@ if __name__ == '__main__':
     pool.get_proxy()
     # proxy = pool.load_proxy()
     # print(proxy)
+    num = pool.proxy_count()
+    print(num)
