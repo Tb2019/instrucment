@@ -36,6 +36,11 @@ class GetApplicationFieldSpider(scrapy.Spider):
             # break
 
     def get_field_link(self, response):
+        '''
+        获取各个领域的仪器页面
+        :param response:
+        :return:
+        '''
         application_file_info_lis = response.xpath('//ul[@data-title="应用领域"]/li')
         for li in application_file_info_lis:
             data_val = '?sampleIds=' + li.xpath('./@data-val').extract_first()
@@ -47,8 +52,11 @@ class GetApplicationFieldSpider(scrapy.Spider):
             # break
 
     def get_field_item(self, response):
-        total_num = response.xpath('//div[@class="tertiaryClasstC-left-tab-sort-total"]//em/text()').extract_first()
-        total_pages = int(total_num) // 30 + 1
+        try:
+            total_num = response.xpath('//div[@class="tertiaryClasstC-left-tab-sort-total"]//em/text()').extract_first()
+            total_pages = int(total_num) // 30 + 1
+        except:
+            print(response.request.url)
 
         item = ApplicationFieldItem()
         instru_info_divs = response.xpath(instru_info_divs_xpath)
