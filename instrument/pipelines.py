@@ -24,13 +24,16 @@ class InstrumentPipeline:
         return cls(crawler.settings.get('BI_CATEGORY_2'))
 
     def open_spider(self, spider):
-        self.file = open(f'./instrument/ApplicationField/{self.category_2}/application_field.json', 'r', encoding='utf-8')
+        self.file = open(f'./instrument/ApplicationField/{self.category_2.replace("/", "_")}/application_field.json', 'r', encoding='utf-8')
         self.field_content = json.load(self.file)
 
     def process_item(self, item, spider):
         instru_name = item['bi_instrument_name']
         instru_category_3 = item['bi_category_3']
-        item['bi_application_field'] = self.field_content[instru_category_3].get(instru_name.strip(), None)
+        try:
+            item['bi_application_field'] = self.field_content[instru_category_3].get(instru_name.strip(), None)
+        except:
+            item['bi_application_field'] = None  # 部分instru_category_3分类下，没有应用领域的标签筛选，导致文件内有数据为空，导致self.field_content[instru_category_3]报错。
         # print(item)
         return item
 
@@ -132,12 +135,16 @@ class ApplicationFieldPipeline:
             if not self.result[item['bi_category_3']].get(item['instru_name'], None):
                 self.result[item['bi_category_3']][item['instru_name'].strip()] = [item['field']]
             else:
-                self.result[item['bi_category_3']][item['instru_name'].strip()] += [item['field']]
+                self.result[item['bi_category_3']][item['instru_name'].strip()] = \
+                    self.result[item['bi_category_3']][item['instru_name'].strip()] + [item['field']] \
+                        if item['field'] not in self.result[item['bi_category_3']][item['instru_name'].strip()] \
+                        else self.result[item['bi_category_3']][item['instru_name'].strip()]
+                        # 同一分类下，仪器名称重复会导致应用领域重复。去重
         # return item
 
     def close_spider(self, spider):
-        directory = f'./instrument/ApplicationField/{self.bi_category_2}'
+        directory = f'./instrument/ApplicationField/{self.bi_category_2.replace("/", "_")}'
         # 检查路径是否存在，不存在则创建
         os.makedirs(directory, exist_ok=True)
-        with open(f'./instrument/ApplicationField/{self.bi_category_2}/application_field.json', 'w', encoding='utf-8') as f:
+        with open(f'./instrument/ApplicationField/{self.bi_category_2.replace("/", "_")}/application_field.json', 'w', encoding='utf-8') as f:
             json.dump(self.result, f, ensure_ascii=False)
