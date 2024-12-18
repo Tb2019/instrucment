@@ -5,7 +5,7 @@ from instrument.get_proxy import ProxyPool
 pool = ProxyPool()
 url = "https://www.instrument.com.cn/netshow/combo/paper/getAttachmentUrl"
 
-payload = {'paperId': '994448',
+payload = {'paperId': '873028.pdf'.partition('.')[0],
 'pType': '1',
 'device': 'PC'}
 files=[
@@ -30,6 +30,6 @@ headers = {
   'x-requested-with': 'XMLHttpRequest'
 }
 
-response = requests.request("POST", url, headers=headers, data=payload, files=files, proxies=pool.load_proxy(from_clash=True))
+response = requests.request("POST", url, headers=headers, data=payload, files=files, proxies=pool.load_proxy(from_clash=False)[1])
 
 print(response.text)
