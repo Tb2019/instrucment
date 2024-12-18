@@ -114,7 +114,7 @@ class ChromatographSpider(scrapy.Spider):
         '''
 
         # 提取每页中详情页链接
-        page_list_infos = response.xpath('//div[@class="tertiaryClasstC-left-list"]/div[contains(@class, "tertiaryClasstC-left-list-item")]')
+        page_list_infos = response.xpath('//div[@class="tertiaryClasstC-left-list"][1]/div[contains(@class, "tertiaryClasstC-left-list-item")]')
         for info in page_list_infos:
             href = response.urljoin(info.xpath('.//div[@class="flex a-c"]/a/@href').extract_first())
             # print(href)
@@ -190,7 +190,9 @@ class ChromatographSpider(scrapy.Spider):
 
         # 相关方案
         info = response.xpath(relevant_solutions_xpath)
-        if info:
+        uls = info.xpath('./ul')
+        if uls:  # 避免数据中出现[]
+        # if info:
             item['relevant_solutions'] = {}
             id_category_dict = {}
 
@@ -203,7 +205,7 @@ class ChromatographSpider(scrapy.Spider):
                 # 将类比信息填充至item
                 item['relevant_solutions'][category_value] = []
 
-            uls = info.xpath('./ul')
+            # uls = info.xpath('./ul')
             for ul in uls:
                 id_ = ul.xpath('./@id').extract_first()
                 # 获得id对应的类别
@@ -231,9 +233,10 @@ class ChromatographSpider(scrapy.Spider):
 
         # 相关文章
         article = response.xpath(relevant_article_xpath)
-        if article:
-            item['relevant_article'] = []
-            lis = article.xpath('./li')
+        # if article:
+        item['relevant_article'] = []
+        lis = article.xpath('./li')
+        if lis:  # 避免数据中出现[]的情况
             for li in lis:
                 article_href = li.xpath('./div[1]/a/@href').extract_first()
                 pdf_serial = re.search(r'down_(\d+)\.htm', article_href.split('/')[-1], re.S).group(1)
@@ -250,11 +253,13 @@ class ChromatographSpider(scrapy.Spider):
                                           'pdf_serial': pdf_serial})
         else:
             item['relevant_article'] = None
+        # else:
+        #     item['relevant_article'] = None
 
         # 用户评论
         user_evaluation = response.xpath(user_evaluation_link_xpath).extract_first()
+        item['user_evaluation'] = []
         if user_evaluation:
-            item['user_evaluation'] = []
             item['evaluation_finished'] = []  # 已经完成的page
             evaluation_link = response.urljoin(user_evaluation)
             yield scrapy.Request(url=evaluation_link,
@@ -263,8 +268,24 @@ class ChromatographSpider(scrapy.Spider):
                                  meta={'item': item,
                                        'page': 1
                                        })
-        else:
-            item['user_evaluation'] = None
+        else:  # 评论没有翻页，只有详情页有几条评论
+            evaluation_divs = response.xpath(user_evaluation_xpath)
+            if evaluation_divs:
+                for evaluation_div in evaluation_divs:
+                    user_name = evaluation_div.xpath('./a/div[1]/div/span/text()').extract_first()
+                    user_avatar = evaluation_div.xpath('./a/div[1]/div/img/@src').extract_first()
+                    evaluation_content = evaluation_div.xpath('./a/div[2]/p/text()').extract_first()
+                    evaluate_img = evaluation_div.xpath('./a/div[@class="yqyx-TRANS-product-intro-usercomments-content-img flex"]/img/@src').extract()
+                    evaluate_time = evaluation_div.xpath('./a/div[last()]/em/text()').extract_first()
+                    item['user_evaluation'].append({
+                        'user_name': user_name,
+                        'user_avatar': user_avatar,
+                        'evaluation_content': evaluation_content,
+                        'evaluate_img': evaluate_img,
+                        'evaluate_time': evaluate_time
+                    })
+            else:
+                item['user_evaluation'] = None
             item['user_evaluation_finished'] = True
             if (item['finish_link_count'] == item['sub_links_num']) and (item['user_evaluation_finished'] is True):
                 # print(item['bi_instrument_name'])
