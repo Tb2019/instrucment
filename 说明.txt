@@ -3,7 +3,14 @@
     接口：https://www.instrument.com.cn/netshow/combo/paper/getAttachmentUrl
     请求方法：post
     请求体body：paperId={url地址最后的数字}&pType=1&device=PC
-    携带cookie
+    携带cookie:
+        cookie获取:在浏览器抓包登录后的下载接口,对照脚本中现在携带的cookie内容,添加必要cookie信息
 
 
 应用领域另行爬取关联
+
+
+脚本运行逻辑:
+    在setting.py文件中设置好1、2级分类以及2级分类的页面的链接作为start_urls的参数.
+    首先运行获取应用领域的爬虫
+    运行完毕后,运行爬取设备信息的爬虫
